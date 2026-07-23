@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Turn Detection Summary</title>
+</head>
+
+<body>
+
+<h1>Turn Detection Speedrun Submission</h1>
+
+<h2>Problem</h2>
+
+<p>
+Predict whether a pause represents an End-of-Turn (EOT) or a Hold using
+only causal information before the pause.
+</p>
+
+<h2>Approach</h2>
+
+<ul>
+<li>Handcrafted prosodic features</li>
+<li>Energy statistics</li>
+<li>Pitch statistics</li>
+<li>Voicing statistics</li>
+<li>MFCC statistics</li>
+<li>Spectral features</li>
+<li>Extra Trees classifier</li>
+<li>MFCC-based CNN classifier</li>
+</ul>
+
+<h2>Dataset</h2>
+
+<ul>
+<li>English</li>
+<li>Hindi</li>
+<li>496 total samples</li>
+</ul>
+
+<h2>Results</h2>
+
+<table border="1" cellpadding="8">
+
+<tr>
+<th>Model</th>
+<th>Validation AUC</th>
+</tr>
+
+<tr>
+<td>Extra Trees</td>
+<td>0.667</td>
+</tr>
+
+<tr>
+<td>CNN</td>
+<td>0.743</td>
+</tr>
+
+</table>
+
+<h2>Future Improvements</h2>
+
+<ul>
+<li>CNN + Extra Trees ensemble</li>
+<li>Feature selection using importance ranking</li>
+<li>Hyperparameter tuning</li>
+<li>Threshold optimization using score.py</li>
+</ul>
+
+</body>
+</html>
