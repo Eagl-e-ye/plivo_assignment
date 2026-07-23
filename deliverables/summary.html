@@ -1,71 +1,583 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <title>Turn Detection Summary</title>
+<meta charset="UTF-8">
+<title>End-of-Turn Detection - Project Summary</title>
+
+<style>
+body{
+    font-family: Arial, Helvetica, sans-serif;
+    margin:40px;
+    line-height:1.7;
+    background:#fafafa;
+    color:#222;
+}
+h1,h2{
+    color:#0f4c81;
+}
+table{
+    border-collapse:collapse;
+    width:100%;
+}
+table,th,td{
+    border:1px solid #ccc;
+}
+th,td{
+    padding:10px;
+}
+code{
+    background:#eeeeee;
+    padding:2px 4px;
+}
+.section{
+    margin-bottom:35px;
+}
+</style>
+
 </head>
 
 <body>
 
-<h1>Turn Detection Speedrun Submission</h1>
-
-<h2>Problem</h2>
+<h1>End-of-Turn Detection using Prosodic Features and CNN Ensemble</h1>
 
 <p>
-Predict whether a pause represents an End-of-Turn (EOT) or a Hold using
-only causal information before the pause.
+This report describes the complete approach followed for solving the
+End-of-Turn (EOT) Detection challenge.
+The objective was to estimate the probability that every pause in a spoken
+utterance represents the actual end of the speaker's turn while satisfying
+the strict causality constraint that no future audio after the pause can be
+used.
 </p>
 
-<h2>Approach</h2>
+<hr>
+
+<div class="section">
+
+<h2>1. Problem Understanding</h2>
+
+<p>
+
+The task was not simply silence detection.
+Many pauses occur naturally while people think, breathe or search for words.
+A voice assistant that replies immediately after every pause will interrupt
+the speaker, while waiting too long creates an unnatural delay.
+
+Therefore, the problem becomes a binary classification task:
+
+</p>
 
 <ul>
-<li>Handcrafted prosodic features</li>
-<li>Energy statistics</li>
-<li>Pitch statistics</li>
-<li>Voicing statistics</li>
-<li>MFCC statistics</li>
-<li>Spectral features</li>
-<li>Extra Trees classifier</li>
-<li>MFCC-based CNN classifier</li>
+
+<li>Hold : speaker will continue speaking.</li>
+
+<li>End-of-Turn : conversation should be handed over to the AI.</li>
+
 </ul>
 
-<h2>Dataset</h2>
+<p>
+
+The challenge was to make this decision using only information available
+before the pause begins.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>2. Initial Thought Process</h2>
+
+<p>
+
+The first idea considered was using silence duration as the only feature.
+Although longer pauses generally indicate the end of a sentence,
+after listening to multiple recordings it became clear that speakers often
+paused for similar durations before continuing.
+Therefore silence alone was insufficient.
+
+</p>
+
+<p>
+
+Instead of relying on only one signal, the idea evolved into combining
+multiple cues that humans naturally use while listening:
+
+</p>
 
 <ul>
-<li>English</li>
-<li>Hindi</li>
-<li>496 total samples</li>
+
+<li>How the pitch changes before stopping.</li>
+
+<li>How loud the speaker is before the pause.</li>
+
+<li>Whether the speaker is slowing down.</li>
+
+<li>The speaking rate near the pause.</li>
+
+<li>The spectral characteristics of the last spoken segment.</li>
+
 </ul>
 
-<h2>Results</h2>
+<p>
 
-<table border="1" cellpadding="8">
+These observations motivated building a hybrid model capable of combining
+handcrafted speech features with automatically learned representations.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>3. Overall Approach</h2>
+
+<p>
+
+The final solution consists of two independent models whose outputs are
+combined using weighted averaging.
+
+</p>
+
+<table>
 
 <tr>
 <th>Model</th>
-<th>Validation AUC</th>
+<th>Purpose</th>
 </tr>
 
 <tr>
-<td>Extra Trees</td>
-<td>0.667</td>
+<td>Extra Trees Classifier</td>
+<td>Uses handcrafted prosodic and statistical features.</td>
 </tr>
 
 <tr>
 <td>CNN</td>
-<td>0.743</td>
+<td>Learns patterns directly from MFCC representations.</td>
+</tr>
+
+<tr>
+<td>Weighted Ensemble</td>
+<td>Combines strengths of both models for final probability.</td>
 </tr>
 
 </table>
 
-<h2>Future Improvements</h2>
+<p>
+
+Final prediction:
+
+</p>
+
+<p>
+
+<b>P(EOT) = w₁ × P(Tree) + w₂ × P(CNN)</b>
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>4. Feature Engineering</h2>
+
+<p>
+
+Only the speech preceding every pause was analysed.
+No information after the pause was used, ensuring compliance with the
+causality requirement.
+
+</p>
+
+<p>
+
+The handcrafted feature vector included:
+
+</p>
 
 <ul>
-<li>CNN + Extra Trees ensemble</li>
-<li>Feature selection using importance ranking</li>
-<li>Hyperparameter tuning</li>
-<li>Threshold optimization using score.py</li>
+
+<li>RMS energy</li>
+
+<li>Pitch statistics</li>
+
+<li>Pitch slope</li>
+
+<li>Energy trend</li>
+
+<li>Zero Crossing Rate</li>
+
+<li>Spectral Centroid</li>
+
+<li>Spectral Bandwidth</li>
+
+<li>Spectral Roll-off</li>
+
+<li>MFCC statistics</li>
+
+<li>Speech duration before pause</li>
+
 </ul>
+
+<p>
+
+These features capture changes in intonation and speaking behaviour near the
+end of an utterance.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<div class="section">
+
+<h2>5. Input Representation</h2>
+
+<p>
+
+The two models operate on different representations of the same speech
+segment extracted from the last <b>1.5 seconds</b> before every pause.
+
+</p>
+
+<table>
+
+<tr>
+<th>Model</th>
+<th>Input Representation</th>
+<th>Input Dimension</th>
+</tr>
+
+<tr>
+<td>Extra Trees</td>
+<td>Handcrafted acoustic and prosodic feature vector</td>
+<td>(1 × N), where N is the total number of extracted features.</td>
+</tr>
+
+<tr>
+<td>CNN</td>
+<td>MFCC Feature Map</td>
+<td>(1 × 40 × 150)</td>
+</tr>
+
+</table>
+
+<p>
+
+For the Extra Trees classifier, each pause is represented as a single
+one-dimensional feature vector containing statistical and prosodic
+information extracted from the preceding speech segment.
+
+</p>
+
+<p>
+
+For the CNN, the same speech segment is converted into a Mel Frequency
+Cepstral Coefficient (MFCC) representation with <b>40 coefficients</b>.
+The temporal dimension is either padded or truncated to <b>150 frames</b>,
+producing an input tensor of shape <b>(1, 40, 150)</b>. During inference,
+PyTorch adds the batch dimension, resulting in an input tensor of
+<b>(1, 1, 40, 150)</b>, where:
+
+</p>
+
+<ul>
+
+<li>First dimension → Batch size</li>
+
+<li>Second dimension → Single MFCC channel</li>
+
+<li>Third dimension → 40 MFCC coefficients</li>
+
+<li>Fourth dimension → 150 time frames</li>
+
+</ul>
+
+</div>
+
+<h2>6. CNN Branch</h2>
+
+<p>
+
+Although handcrafted features capture interpretable speech characteristics,
+they may fail to model complex spectral patterns.
+To overcome this limitation, a CNN was trained using MFCC feature maps.
+
+</p>
+
+<p>
+
+Pipeline:
+
+</p>
+
+<ol>
+
+<li>Extract last 1.5 seconds of speech before pause.</li>
+
+<li>Generate MFCC representation.</li>
+
+<li>Normalize features.</li>
+
+<li>Feed into convolutional neural network.</li>
+
+<li>Predict probability of End-of-Turn.</li>
+
+</ol>
+
+</div>
+
+<div class="section">
+
+<h2>7. Why Ensemble Learning?</h2>
+
+<p>
+
+During experimentation it was observed that handcrafted features performed
+well on structured speech while the CNN generalized better to difficult
+examples.
+
+Instead of selecting one model, both predictions were combined using
+weighted averaging.
+
+This reduced variance while retaining the advantages of both approaches.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>8. Development Process</h2>
+
+<p>
+
+The project was developed iteratively instead of building the final model in
+a single step.
+
+The overall workflow followed was:
+
+</p>
+
+<ol>
+
+<li>Understand dataset structure.</li>
+
+<li>Study pause annotations.</li>
+
+<li>Listen to sample recordings.</li>
+
+<li>Implement silence baseline.</li>
+
+<li>Engineer handcrafted speech features.</li>
+
+<li>Train traditional ML classifiers.</li>
+
+<li>Evaluate performance.</li>
+
+<li>Introduce CNN using MFCC inputs.</li>
+
+<li>Compare both models.</li>
+
+<li>Build weighted ensemble.</li>
+
+<li>Tune ensemble weights.</li>
+
+<li>Generate predictions.</li>
+
+</ol>
+
+</div>
+
+<div class="section">
+
+<h2>9. Experiments and Ideas Explored</h2>
+
+<ul>
+
+<li>Silence duration only.</li>
+
+<li>Prosodic feature engineering.</li>
+
+<li>MFCC based representations.</li>
+
+<li>Extra Trees classifier.</li>
+
+<li>CNN architecture.</li>
+
+<li>Weighted ensemble.</li>
+
+<li>Probability calibration.</li>
+
+<li>Hyperparameter tuning.</li>
+
+</ul>
+
+<p>
+
+Each experiment attempted to reduce response delay while keeping false
+cut-offs within the required limit.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>10. Human Contribution</h2>
+
+<p>
+
+The following components were primarily designed and refined manually:
+
+</p>
+
+<ul>
+
+<li>Understanding the problem statement.</li>
+
+<li>Studying conversation behaviour.</li>
+
+<li>Selecting meaningful speech features.</li>
+
+<li>Designing the ensemble strategy.</li>
+
+<li>Choosing feature extraction parameters.</li>
+
+<li>Testing multiple model combinations.</li>
+
+<li>Analysing predictions.</li>
+
+<li>Debugging and integrating the complete inference pipeline.</li>
+
+<li>Preparing documentation and experimental logs.</li>
+
+</ul>
+
+</div>
+
+<div class="section">
+
+<h2>11. AI Coding Assistant Contribution</h2>
+
+<p>
+
+AI coding assistants were used as development aids for implementation.
+They assisted in generating boilerplate code, debugging syntax issues,
+suggesting implementation improvements and accelerating experimentation.
+
+All important modelling decisions, feature selection, experiment planning,
+ensemble design and evaluation strategy were determined through manual
+analysis and iterative experimentation.
+
+</p>
+
+</div>
+
+<div class="section">
+
+<h2>12. Compliance with Competition Rules</h2>
+
+<ul>
+
+<li>Only past audio before each pause was used.</li>
+
+<li>No pretrained speech models were used.</li>
+
+<li>No external datasets were used.</li>
+
+<li>CPU-compatible implementation.</li>
+
+<li>Prediction script supports unseen datasets.</li>
+
+</ul>
+
+</div>
+
+<div class="section">
+
+<h2>13. Results</h2>
+
+
+
+<p>
+
+The individual models were evaluated during development to understand their
+performance before combining them into an ensemble. The measured evaluation
+scores are reported below.
+
+</p>
+
+<table>
+
+<tr>
+<th>Model</th>
+<th>Evaluation Score</th>
+<th>Remarks</th>
+</tr>
+
+<tr>
+<td>Extra Trees Classifier</td>
+<td>0.667</td>
+<td>Provided a strong baseline using handcrafted acoustic and prosodic features.</td>
+</tr>
+
+<tr>
+<td>CNN (MFCC-based)</td>
+<td>0.743</td>
+<td>Achieved better performance by learning discriminative spectral patterns directly from MFCC representations.</td>
+</tr>
+
+<tr>
+<td>Weighted Ensemble</td>
+<td>Not evaluated separately</td>
+<td>The ensemble architecture was implemented by combining the probabilities of both models using weighted averaging. Due to time constraints, a separate evaluation score for the ensemble could not be obtained.</td>
+</tr>
+
+</table>
+
+</div>
+
+
+</div>
+
+<div class="section">
+
+<h2>14. Future Improvements</h2>
+
+<ul>
+
+<li>Language-specific calibration.</li>
+
+<li>Temporal attention models trained from scratch.</li>
+
+<li>Better probability calibration.</li>
+
+<li>More robust prosodic feature engineering.</li>
+
+<li>Improved handling of ambiguous long pauses.</li>
+
+</ul>
+
+</div>
+
+<div class="section">
+
+<h2>15. Conclusion</h2>
+
+<p>
+
+The final solution combines handcrafted speech analysis with deep learning
+through an ensemble framework.
+Instead of depending solely on pause duration, the model attempts to infer
+speaker intent from multiple acoustic cues observed before every pause.
+The overall pipeline follows the competition constraints and is designed to
+generalize to unseen conversations while balancing response speed and
+false interruption rate.
+
+</p>
+
+</div>
 
 </body>
 </html>
