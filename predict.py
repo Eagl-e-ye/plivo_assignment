@@ -1,12 +1,7 @@
 """
-Prediction using
-
 Extra Trees
 +
 CNN
-
-Final probability
-
 P = w_tree * P_tree + w_cnn * P_cnn
 """
 
@@ -386,6 +381,8 @@ def predict_dataset(
             open(csv_path)
         )
     )
+    print(f"CSV path: {csv_path}")
+    print(f"Rows loaded: {len(rows)}")
 
     cache = {}
 
@@ -442,7 +439,13 @@ def predict_dataset(
             1 if row["label"] == "eot" else 0
         )
 
-        prob = p_final
+        prob = float(p_final)
+
+        predictions.append([
+            row["turn_id"],
+            row["pause_index"],
+            prob
+        ])
 
     ###############################################
     # Save CSV
@@ -535,9 +538,10 @@ def main():
 
     parser.add_argument(
 
-        "--output",
+        "--out",
 
-        default="predictions.csv"
+        default="predictions.csv",
+        help="Output predictions CSV"
 
     )
 
@@ -589,21 +593,21 @@ def main():
     # Predict
     ########################################################
 
-    for lang in ["english", "hindi"]:
+   
+    tree_model, cnn, device = load_models(
+        args.tree_model,
+        args.cnn_model
+    )
 
-        folder = os.path.join(args.data_dir, lang)
+    print("\nPredicting...\n")
 
-        output = f"{lang}_predictions.csv"
-
-        print(f"\nRunning on {lang}...\n")
-
-        predict_dataset(
-            folder,
-            tree_model,
-            cnn,
-            device,
-            output
-        )
+    predict_dataset(
+        args.data_dir,
+        tree_model,
+        cnn,
+        device,
+        args.out
+    )
 
 
 if __name__ == "__main__":
